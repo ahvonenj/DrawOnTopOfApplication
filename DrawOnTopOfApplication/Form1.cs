@@ -5,7 +5,9 @@ using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using System.Security;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -47,12 +49,20 @@ namespace DrawOnTopOfApplication
         [DllImport("user32.dll")]
         static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
+        [DllImport("user32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        public static extern int RegisterWindowMessage(string lpString);
+
+        [DllImport("user32.dll", EntryPoint = "SendMessage", CharSet = System.Runtime.InteropServices.CharSet.Auto)] //
+        public static extern bool SendMessage(IntPtr hWnd, uint Msg, int wParam, StringBuilder lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr SendMessage(int hWnd, int Msg, int wparam, int lparam);
+
         private Process proc = new Process();
         private IntPtr procHandle;
         private RECT procRect;
 
         private int initialStyle;
-
 
         int GameX = 1;
         int GameY = 1;
@@ -64,18 +74,11 @@ namespace DrawOnTopOfApplication
 
         bool Startup = true;
 
-        int showAngle;
-        float angle = 60;
-        float radians;
-        float Velocity = 45;
-        float y = 1;
-        int x;
-        float a;
-        float c = 1;
-
-        bool underGroundShot = false;
-
         private const int WM_HOTKEY = 0x312;
+        private const int WM_GETTEXT = 0xD;
+        private const int WM_GETTEXTLENGTH = 0x000E;
+
+        StringBuilder sb;
 
         public Form1()
         {
@@ -100,9 +103,9 @@ namespace DrawOnTopOfApplication
             }
 
             SetForegroundWindow(procHandle);
-            initialStyle = GetWindowLong(procHandle, -20);
+            //initialStyle = GetWindowLong(procHandle, -20);
             //SetWindowLong(procHandle, -20, initialStyle != null || unchecked((int)0x80000) || unchecked((int)0x20));
-            SetWindowLong(procHandle, -20, initialStyle);
+            //SetWindowLong(procHandle, -20, initialStyle);
 
             BornNext(this);
 
@@ -133,152 +136,60 @@ namespace DrawOnTopOfApplication
             ScreenRatioX = GameX / 1280;
             ScreenRatioY = GameY / 759;
 
+            IntPtr fWind = GetForegroundWindow();
+            int size = SendMessage((int)fWind, WM_GETTEXTLENGTH, 0, 0).ToInt32();
 
-            StringBuilder sb = new StringBuilder(0, 100);
-
-            GetWindowText(GetForegroundWindow(), sb, 100);
-
-            if(sb.ToString().Contains("Untitled - Notepad"))
+            if (size > 0)
             {
-                TopMost = true;
+                sb = new StringBuilder(size + 1);
+                SendMessage(fWind, (int)WM_GETTEXT, sb.Capacity, sb);
 
-                if(Startup)
+                if (sb.ToString().Contains("Notepad"))
                 {
-                    WindowState = FormWindowState.Normal;
-                    Startup = false;
-                }
-            }
-            else
-            {
-                TopMost = false;
-            }
+                    Debug.WriteLine("Is notepad");
+                    TopMost = true;
 
-            if (GetAsyncKeyState(Keys.RButton) == 1)
-            {
-                MyPlayer.X = Cursor.Position.X - Left;
-                MyPlayer.Y = -(Cursor.Position.Y - Top) + Height;
-                ArrowBot();
-            }
-        }
-
-        private void ArrowBot()
-        {
-            try
-            {
-                if (angle == 90)
-                    return;
-
-                Graphics myGraphics = CreateGraphics();
-                myGraphics.Clear(Color.FromArgb(255, 1, 1, 1));
-                myGraphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-                myGraphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixel;
-
-                if (angle > 90)
-                {
-                    angle = 180 - angle;
-                }
-                else if (angle == 0)
-                {
-                    angle = 180;
-                }
-
-                radians = (float)(angle * Math.PI / 180);
-
-                MaxHeightPoint.Y = (float)(Velocity * Velocity * Math.Sin(radians) * Math.Sin(radians) / 20 * 1.67 * ScreenRatioX); //1.68
-                a = (float)(4 * MaxHeightPoint.Y / Math.Tan(radians));
-                c = (float)(-Math.Tan(radians) / a * 1.02);
-
-                MaxHeightPoint.X = MyPlayer.X + a / 2;
-
-                if (underGroundShot)
-                    c = -c;
-
-                x = 0;
-
-                Point[] Points = new Point[Width];
-
-                while (x < Width)
-                {
-                    y = c * ((x - MyPlayer.X) - a) * (x - MyPlayer.X);   //curve, where the magic happens 
-
-                    try
+                    if (Startup)
                     {
-                        Points[x] = new Point(x, (int)(-y + MyPlayer.YtoScreen(this)));
+                        WindowState = FormWindowState.Normal;
+                        Startup = false;
                     }
-                    catch (Exception ex)
-                    {
-                        x = Width;
-                    }
-
-                    x++;
-                }
-
-                // point edit
-                int MinPoint;
-                int MaxPoint;
-
-                if (MaxHeightPoint.X > MyPlayer.X)
-                {
-                    MinPoint = (int)MyPlayer.X; // 4000- MyPlayer.X
-                    MaxPoint = Width;
                 }
                 else
                 {
-                    MinPoint = 0; // MyPlayer.X+4000
-                    MaxPoint = (int)MyPlayer.X;
+                    Debug.WriteLine("Is not notepad");
+                    TopMost = false;
                 }
+            }
 
-                Point[] PointsNot = new Point[MaxPoint - MinPoint];
 
-                try
-                {
-                    x = 0;
 
-                    if (MaxHeightPoint.X > MyPlayer.X)
-                    {
-                        while (x < MaxPoint - MinPoint)
-                        {
-                            PointsNot[x] = Points[Width - x];
-                            x = x + 1;
-                        }
-                    }
-                    else
-                    {
+            if (GetAsyncKeyState(Keys.RButton) != 0)
+            {
+                MyPlayer.X = Cursor.Position.X - Left;
+                MyPlayer.Y = -(Cursor.Position.Y - Top) + Height;
+                Draw();
+            }
+        }
 
-                        while (x < MaxPoint - MinPoint)
-                        {
-                            PointsNot[x] = Points[x];
-                            x = x + 1;
-                        }
-                    }
-                }
-                catch (Exception ex2)
-                {
-
-                }
-
-                // point edit
-                try
-                {
-                    myGraphics.DrawCurve(curvePen, PointsNot);
-                }
-                catch (Exception ex3)
-                {
-
-                }
+        private void Draw()
+        {
+            try
+            {
+                Graphics myGraphics = CreateGraphics();
+                myGraphics.Clear(Color.FromArgb(255, 1, 1, 1));
+                myGraphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                myGraphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixel;    
 
                 lblPlayer.Size = new Size((int)(45 * ScreenRatioX), 20);
                 lblPlayer.Location = new Point((int)(MyPlayer.X - lblPlayer.Size.Width / 2), (int)(MyPlayer.YtoScreen(this) + 21 * ScreenRatioX));
 
-                //Form2.lblSolution.Text = Velocity.ToString + ", " + showAngle.ToString
-                lblSolution.Text = Velocity.ToString() + ", " + showAngle.ToString();
                 lblSolution.Location = new Point((int)(MyPlayer.X - 18), (int)(MyPlayer.YtoScreen(this) - 90 * ScreenRatioX));
 
                 lblSolution.Text = GetAsyncKeyState(Keys.RButton).ToString();
 
-                if (GetAsyncKeyState(Keys.RButton) == 1)
+                if (GetAsyncKeyState(Keys.RButton) != 0)
                 {
-                    
                     myGraphics.DrawLine(curvePen, MyPlayer.X - 80, MyPlayer.YtoScreen(this) - 80, MyPlayer.X + 80, MyPlayer.YtoScreen(this) + 80);
                     myGraphics.DrawLine(curvePen, MyPlayer.X - 80, MyPlayer.YtoScreen(this) + 80, MyPlayer.X + 80, MyPlayer.YtoScreen(this) - 80);
                     myGraphics.DrawLine(curvePen, MyPlayer.X, MyPlayer.YtoScreen(this) - 113, MyPlayer.X, MyPlayer.YtoScreen(this) + 113);
