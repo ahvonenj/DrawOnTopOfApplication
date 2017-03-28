@@ -146,7 +146,6 @@ namespace DrawOnTopOfApplication
 
                 if (sb.ToString().Contains("Notepad"))
                 {
-                    Debug.WriteLine("Is notepad");
                     TopMost = true;
 
                     if (Startup)
@@ -157,7 +156,6 @@ namespace DrawOnTopOfApplication
                 }
                 else
                 {
-                    Debug.WriteLine("Is not notepad");
                     TopMost = false;
                 }
             }
@@ -168,8 +166,9 @@ namespace DrawOnTopOfApplication
             {
                 MyPlayer.X = Cursor.Position.X - Left;
                 MyPlayer.Y = -(Cursor.Position.Y - Top) + Height;
-                Draw();
+                
             }
+            Draw();
         }
 
         private void Draw()
@@ -184,9 +183,7 @@ namespace DrawOnTopOfApplication
                 lblPlayer.Size = new Size((int)(45 * ScreenRatioX), 20);
                 lblPlayer.Location = new Point((int)(MyPlayer.X - lblPlayer.Size.Width / 2), (int)(MyPlayer.YtoScreen(this) + 21 * ScreenRatioX));
 
-                lblSolution.Location = new Point((int)(MyPlayer.X - 18), (int)(MyPlayer.YtoScreen(this) - 90 * ScreenRatioX));
-
-                lblSolution.Text = GetAsyncKeyState(Keys.RButton).ToString();
+                lblSolution.Location = new Point(50, 50);
 
                 if (GetAsyncKeyState(Keys.RButton) != 0)
                 {

@@ -36,7 +36,7 @@
             // 
             // timer1
             // 
-            this.timer1.Interval = 33;
+            this.timer1.Interval = 1;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
             // lblPlayer
@@ -50,11 +50,12 @@
             // 
             this.lblSolution.AutoSize = true;
             this.lblSolution.BackColor = System.Drawing.Color.Transparent;
+            this.lblSolution.Font = new System.Drawing.Font("Consolas", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblSolution.Location = new System.Drawing.Point(763, 206);
             this.lblSolution.Name = "lblSolution";
-            this.lblSolution.Size = new System.Drawing.Size(31, 13);
+            this.lblSolution.Size = new System.Drawing.Size(110, 22);
             this.lblSolution.TabIndex = 0;
-            this.lblSolution.Text = "Point";
+            this.lblSolution.Text = "Label Test";
             // 
             // Form1
             // 
